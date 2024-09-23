@@ -10,25 +10,27 @@ import UserWidget from "scenes/widgets/UserWidget";
 
 const ProfilePage = () => {
   const [user, setUser] = useState(null);
-  const { userId } = useParams();
-  const token = useSelector((state) => state.token);
+  const { userId } = useParams(); // Extract userId from the route
+  const token = useSelector((state) => state.token); // Get token from Redux
   const isNonMobileScreens = useMediaQuery("(min-width:1000px)");
 
+  // Fetch user data
   const getUser = async () => {
-    const response = await fetch(`http://localhost:3001/users/${userId}`, {
+    console.log(token, 'Fetching user:', userId);
+    const response = await fetch(`http://localhost:8000/users/${userId}`, {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await response.json();
-    setUser(data);
+    setUser(data); // Set the user data to state
   };
 
+  // Use effect that runs when the userId changes
   useEffect(() => {
     getUser();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  console.log(`Hello the user is :    ${user}`)
-  console.log(userId)
-  if (!user) return null;
+  }, [userId]); // Add userId as a dependency
+
+  if (!user) return null; // Show nothing if user is not loaded yet
 
   return (
     <Box>

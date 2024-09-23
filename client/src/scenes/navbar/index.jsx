@@ -1,56 +1,155 @@
 import { useState } from "react";
-import { Box, IconButton, InputBase, Typography, 
-    Select, MenuItem, FormControl, useTheme, useMediaQuery } from "@mui/material";
-import { Search, Message, DarkMode, LightMode, 
-    Notifications, Help, Menu, Close } from "@mui/icons-material";
+import {
+  Box,
+  IconButton,
+  InputBase,
+  Typography,
+  MenuItem,
+  useTheme,
+  useMediaQuery,
+} from "@mui/material";
+import {
+  Search,
+  Message,
+  DarkMode,
+  LightMode,
+  Notifications,
+  Help,
+  Menu,
+  Close,
+} from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import { setMode, setLogout } from "state";
 import { useNavigate } from "react-router-dom";
 import FlexBetween from "components/FlexBetween";
 
-const Navbar=()=>{
-    const [isMobileMenuToggled, setIsMobileMenuToggled] = useState(false);
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
-    const user = useSelector((state)=>state.user);
-    const isNonMobileScreens=useMediaQuery("(min-width: 1000px");
-    
-    const theme=useTheme();
-    const neutralLight = theme.palette.neutral.light;
-    const dark = theme.palette.neutral.dark;
-    const background = theme.palette.background.default;
-    const primaryLight = theme.palette.primary.light;
-    const alt = theme.palette.background.alt;
-    // const firstName="Aks";
-    // const lastName="Cho";
-    // const fullName=`${firstName} ${lastName}`;
-    const fullName = `${user.firstName} ${user.lastName}`;
+const Navbar = () => {
+  const [isMobileMenuToggled, setIsMobileMenuToggled] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState([]); // For storing search results
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-    return <FlexBetween padding="1rem 6%" backgroundColor={alt}>
-        <FlexBetween gap="1.75rem">
-            <Typography 
-                fontWeight="bold" fontSize="clamp(1rem,2rem,2.25rem)" 
-                color="#1b5e20" onClick={()=>navigate("/home")}
-                sx={{
-                    "&:hover": {
-                        color: "#487e4c",
-                        cursor: "pointer"
-                    }
-                }}>
-            Connectify
-            </Typography>
-            {isNonMobileScreens && (
-          <FlexBetween
-            backgroundColor={neutralLight}
-            borderRadius="9px"
-            gap="3rem"
-            padding="0.1rem 1.5rem"
-          >
-            <InputBase placeholder="Search..." />
-            <IconButton>
-              <Search />
-            </IconButton>
-          </FlexBetween>
+  // Moved useSelector hook outside handleSearch
+  const user = useSelector((state) => state.user);
+  // const token = useSelector((state) => state.auth?.token);
+  const token = useSelector((state) => state.token);
+  // console.log(token, "..."); // Check if `auth` is correctly populated
+  // Safe fallback
+  // Get token here
+  const isNonMobileScreens = useMediaQuery("(min-width: 1000px)");
+
+  const theme = useTheme();
+  const neutralLight = theme.palette.neutral.light;
+  const dark = theme.palette.neutral.dark;
+  const background = theme.palette.background.default;
+  const primaryLight = theme.palette.primary.light;
+  const alt = theme.palette.background.alt;
+  const fullName = `${user.firstName} ${user.lastName}`;
+
+  // Handle the search logic
+  const handleSearch = async (e) => {
+    setSearchTerm(e.target.value);
+    if (e.target.value.length > 0) {
+      try {
+        console.log(e.target.value);
+        const response = await fetch(
+          `http://localhost:8000/search/users?query=${e.target.value}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`, // Use token from state
+            },
+          }
+        );
+        const result = await response.json();
+        setSearchResults(result); // Assuming the backend returns a list of matching users
+      } catch (error) {
+        console.error("Error fetching search results:", error);
+      }
+    } else {
+      setSearchResults([]);
+    }
+  };
+
+  // Handle user selection from dropdown
+  const handleUserSelect = (selectedUser) => {
+    setSearchTerm(""); // Clear the search input after selection
+    setSearchResults([]); // Clear the dropdown
+    console.log(selectedUser)
+    navigate(`/profile/${selectedUser._id}`); // Redirect to the selected user's profile
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    dispatch(setLogout());
+    navigate("/"); // Redirect the user to the login page after logging out
+  };
+
+  return (
+    <FlexBetween padding="1rem 6%" backgroundColor={alt}>
+      <FlexBetween gap="1.75rem">
+        <Typography
+          fontWeight="bold"
+          fontSize="clamp(1rem,2rem,2.25rem)"
+          color="#1b5e20"
+          onClick={() => navigate("/home")}
+          sx={{
+            "&:hover": {
+              color: "#487e4c",
+              cursor: "pointer",
+            },
+          }}
+        >
+          Connectify
+        </Typography>
+
+        {/* Search Bar */}
+        {isNonMobileScreens && (
+          <Box position="relative" width="300px">
+            <FlexBetween
+              backgroundColor={neutralLight}
+              borderRadius="9px"
+              gap="3rem"
+              padding="0.1rem 1.5rem"
+            >
+              <InputBase
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={handleSearch} // Search on input change
+              />
+              <IconButton>
+                <Search />
+              </IconButton>
+            </FlexBetween>
+
+            {/* Dropdown for search results */}
+            {searchResults.length > 0 && (
+              <Box
+                position="absolute"
+                top="100%"
+                left="0"
+                width="100%"
+                maxHeight="200px"
+                backgroundColor={neutralLight}
+                boxShadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
+                borderRadius="0 0 9px 9px"
+                overflow="auto"
+                zIndex="10"
+              >
+                {searchResults.map((result) => (
+                  <MenuItem
+                    key={result._id}
+                    onClick={() => handleUserSelect(result)}
+                    sx={{ "&:hover": { backgroundColor: primaryLight } }}
+                  >
+                    <Typography>
+                      {result.firstName} {result.lastName}
+                    </Typography>
+                  </MenuItem>
+                ))}
+              </Box>
+            )}
+          </Box>
         )}
       </FlexBetween>
 
@@ -67,30 +166,12 @@ const Navbar=()=>{
           <Message sx={{ fontSize: "25px" }} />
           <Notifications sx={{ fontSize: "25px" }} />
           <Help sx={{ fontSize: "25px" }} />
-          <FormControl variant="standard" value={fullName}>
-            <Select
-              value={fullName}
-              sx={{
-                backgroundColor: neutralLight,
-                width: "150px",
-                borderRadius: "0.25rem",
-                p: "0.25rem 1rem",
-                "& .MuiSvgIcon-root": {
-                  pr: "0.25rem",
-                  width: "3rem",
-                },
-                "& .MuiSelect-select:focus": {
-                  backgroundColor: neutralLight,
-                },
-              }}
-              input={<InputBase />}
-            >
-              <MenuItem value={fullName}>
-                <Typography>{fullName}</Typography>
-              </MenuItem>
-              <MenuItem onClick={() => dispatch(setLogout())}>Log Out</MenuItem>
-            </Select>
-          </FormControl>
+          {/* User Dropdown */}
+          <Box>{fullName}</Box>
+          <IconButton onClick={handleLogout}>
+            <Typography>Logout</Typography>
+          </IconButton>{" "}
+          {/* Logout button */}
         </FlexBetween>
       ) : (
         <IconButton
@@ -112,7 +193,7 @@ const Navbar=()=>{
           minWidth="300px"
           backgroundColor={background}
         >
-          {/* CLOSE ICON */}
+          {/* Close Icon */}
           <Box display="flex" justifyContent="flex-end" p="1rem">
             <IconButton
               onClick={() => setIsMobileMenuToggled(!isMobileMenuToggled)}
@@ -121,18 +202,14 @@ const Navbar=()=>{
             </IconButton>
           </Box>
 
-          {/* MENU ITEMS */}
+          {/* Menu Items */}
           <FlexBetween
             display="flex"
             flexDirection="column"
-            justifyContent="center"
             alignItems="center"
-            gap="3rem"
+            gap="2rem"
           >
-            <IconButton
-              onClick={() => dispatch(setMode())}
-              sx={{ fontSize: "25px" }}
-            >
+            <IconButton onClick={() => dispatch(setMode())}>
               {theme.palette.mode === "dark" ? (
                 <DarkMode sx={{ fontSize: "25px" }} />
               ) : (
@@ -142,35 +219,16 @@ const Navbar=()=>{
             <Message sx={{ fontSize: "25px" }} />
             <Notifications sx={{ fontSize: "25px" }} />
             <Help sx={{ fontSize: "25px" }} />
-            <FormControl variant="standard" value={fullName}>
-              <Select
-                value={fullName}
-                sx={{
-                  backgroundColor: neutralLight,
-                  width: "150px",
-                  borderRadius: "0.25rem",
-                  p: "0.25rem 1rem",
-                  "& .MuiSvgIcon-root": {
-                    pr: "0.25rem",
-                    width: "3rem",
-                  },
-                  "& .MuiSelect-select:focus": {
-                    backgroundColor: neutralLight,
-                  },
-                }}
-                input={<InputBase />}
-              >
-                <MenuItem value={fullName}>
-                  <Typography>{fullName}</Typography>
-                </MenuItem>
-                <MenuItem onClick={() => dispatch(setLogout())}>
-                  Log Out
-                </MenuItem>
-              </Select>
-            </FormControl>
+            <Typography>{fullName}</Typography>
+            <IconButton onClick={handleLogout}>
+              <Typography>Logout</Typography>
+            </IconButton>{" "}
+            {/* Mobile Logout button */}
           </FlexBetween>
         </Box>
       )}
-    </FlexBetween>;
-}
+    </FlexBetween>
+  );
+};
+
 export default Navbar;
